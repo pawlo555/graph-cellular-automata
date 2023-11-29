@@ -16,7 +16,6 @@ np.random.seed(42)
 def generate_random_graph(nodes, edges):
     G = nx.gnm_random_graph(nodes, edges, seed=42)
 
-    # Generate random colors for nodes (3 colors for demonstration)
     node_colors_dict = nx.greedy_color(G)
     node_colors = []
     for key in sorted(node_colors_dict.keys()):
@@ -25,7 +24,7 @@ def generate_random_graph(nodes, edges):
     return G, node_colors
 
 
-def create_pyg_example(graph, node_colors):
+def create_pyg_example(graph, node_colors, num_colors):
     edge_list = list(graph.edges())
     edge_index = torch.tensor(edge_list, dtype=torch.long).t().contiguous()
 
@@ -33,7 +32,7 @@ def create_pyg_example(graph, node_colors):
     node_features = torch.tensor(node_colors, dtype=torch.long)
 
     # Create a PyTorch Geometric data object
-    data = Data(x=torch.nn.functional.one_hot(node_features), edge_index=edge_index, max_colours=2)
+    data = Data(x=torch.nn.functional.one_hot(node_features, num_colors), edge_index=edge_index, max_colours=2)
 
     return data
 
@@ -49,24 +48,28 @@ class GraphColouringDataset(Dataset):
         return len(self.files)
 
     def get(self, idx):
-        data = torch.load(join(self.processed_dir, f'data_{idx}.pt'))
+        data = torch.load(join(self.root, f'graph_{idx}.pt'))
         return data
 
 
 def create_graph_dataset(dataset_name: str, elements: int, min_nodes: int, max_nodes: int, min_edges: int,
                          max_edges: int):
     os.makedirs(dataset_name, exist_ok=True)
+    graphs = []
     max_colors = 0
     for element in range(elements):
         num_nodes = random.randint(min_nodes, max_nodes)
         num_edges = random.randint(min_edges, max_edges)
         random_graph, colors = generate_random_graph(num_nodes, num_edges)
-        num_colors = np.max(colors)
+        graphs.append((random_graph, colors))
+        num_colors = np.max(np.array(colors))
         if max_colors < num_colors:
             max_colors = num_colors
-        data = create_pyg_example(random_graph, colors)
+    for element in range(elements):
+        random_graph, colors = graphs[element]
+        data = create_pyg_example(random_graph, colors, max_colors+1)
         torch.save(data, os.path.join(dataset_name, f"graph_{element}.pt"))
-    torch.save(max_colors, os.path.join(dataset_name, "meta.pt"))
+    torch.save(max_colors+1, os.path.join(dataset_name, "meta.pt"))
 
 
 def generating_graph_example():
@@ -78,7 +81,7 @@ def generating_graph_example():
     random_graph, colors = generate_random_graph(num_nodes, num_edges)
 
     # Create PyTorch Geometric dataset
-    dataset = create_pyg_example(random_graph, colors)
+    dataset = create_pyg_example(random_graph, colors, np.max(colors)+1)
 
     # Visualize the generated graph with colors (optional)
     nx.draw(random_graph, node_color=colors, with_labels=True)
