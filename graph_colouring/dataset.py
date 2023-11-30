@@ -26,13 +26,17 @@ def generate_random_graph(nodes, edges):
 
 def create_pyg_example(graph, node_colors, num_colors):
     edge_list = list(graph.edges())
-    edge_index = torch.tensor(edge_list, dtype=torch.long).t().contiguous()
-
+    edge_index_ab = torch.tensor(edge_list, dtype=torch.long).t().contiguous()
+    edge_index_ba = torch.stack([edge_index_ab[1], edge_index_ab[0]], dim=0)
+    edge_index = torch.concat([edge_index_ab, edge_index_ba], dim=-1)
     # Convert node colors to tensor
     node_features = torch.tensor(node_colors, dtype=torch.long)
+    colors = node_features.clone().detach()
+    colors[:] = torch.max(colors)
 
     # Create a PyTorch Geometric data object
-    data = Data(x=torch.nn.functional.one_hot(node_features, num_colors), edge_index=edge_index, max_colours=2)
+    data = Data(x=torch.nn.functional.one_hot(node_features, num_colors), edge_index=edge_index,
+                max_colours=colors)
 
     return data
 
@@ -94,7 +98,7 @@ def generating_graph_example():
 
 if __name__ == '__main__':
     generating_graph_example()
-    create_graph_dataset("basic_dataset", 1000, 50, 100, 200, 400)
+    create_graph_dataset("basic_dataset", 5000, 20, 30, 10, 35)
     dataset = GraphColouringDataset("basic_dataset")
     print(len(dataset))
     print(dataset.num_colors)
