@@ -58,22 +58,23 @@ def train_model():
 
     # Define train-test split and create data loaders
 
-    train_loader = DataLoader(train_data, batch_size=1, shuffle=True)
-    test_loader = DataLoader(test_data, batch_size=1, shuffle=False)
+    train_loader = DataLoader(train_data, batch_size=16, shuffle=True)
+    test_loader = DataLoader(test_data, batch_size=16, shuffle=False)
 
     num_classes = dataset.num_colors  # Number of colors
-    num_features = dataset.num_colors  # For simplicity, let's start with 1 feature per node
-    hidden_channels = 12
+    num_features = 16
+    hidden_channels = 64
+    num_layers = 2
 
     # Create an instance of the GNN model
-    model = GNNGraphColoring(num_features, hidden_channels, num_classes)
+    model = GNNGraphColoring(num_features, hidden_channels, num_classes, num_layers)
 
-    optimizer = torch.optim.Adam(model.parameters(), lr=0.0001)
+    optimizer = torch.optim.Adam(model.parameters(), lr=1e-3)
     device = "cpu"
     model = model.to(device)
 
     # Training and evaluation iterations
-    num_epochs = 100
+    num_epochs = 10000
     train_losses = []
     test_accuracies = []
 
@@ -90,11 +91,14 @@ def train_model():
     plt.plot(range(1, num_epochs + 1), test_accuracies, label='Test Loss')
     plt.xlabel('Epochs')
     plt.ylabel('Value')
+    plt.xscale('log')
     plt.legend()
     plt.show()
 
     show_results(dataset, model)
 
+    model.eval()
+    torch.save(model.state_dict(), "model.pt")
 
 
 def test_cost_function():

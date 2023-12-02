@@ -2,7 +2,7 @@ import networkx as nx
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from torch_geometric.nn import GCNConv
+from torch_geometric.nn import GCN
 import matplotlib.pyplot as plt
 import numpy as np
 
@@ -10,27 +10,13 @@ from graph_colouring.dataset import GraphColouringDataset
 
 
 class GNNGraphColoring(nn.Module):
-    def __init__(self, num_features, hidden_channels, num_classes):
+    def __init__(self, num_features, hidden_channels, num_classes, num_layers):
         super(GNNGraphColoring, self).__init__()
-        self.conv1 = GCNConv(1, hidden_channels)
-        self.conv2 = GCNConv(hidden_channels, hidden_channels)
-        self.conv3 = GCNConv(hidden_channels, hidden_channels)
-        self.conv4 = GCNConv(hidden_channels, num_classes)
+        self.gcn = GCN(num_features, hidden_channels, num_layers, num_classes, dropout=0.3, agg='sum', act='softmax')
 
     def forward(self, data):
-        x, edge_index = data.x, data.edge_index
-        x = torch.arange(0, x.shape[0], dtype=torch.float)  # need to create sensible features, cannot use x because they are true colors
-        x = torch.unsqueeze(x, dim=-1)
-        x = x.to(torch.float)
-        x = self.conv1(x, edge_index)
-        x = F.leaky_relu(x)
-        x = self.conv2(x, edge_index)
-        x = F.leaky_relu(x)
-        x = self.conv3(x, edge_index)
-        x = F.leaky_relu(x)
-        x = self.conv4(x, edge_index)
-
-        return torch.nn.functional.softmax(x, dim=-1)
+        x = self.gcn(data.x, data.edge_index, data.edge_weight)
+        return F.softmax(x, dim=-1)
 
 
 def show_results(dataset, model):
@@ -58,11 +44,11 @@ if __name__ == '__main__':
     print(len(dataset))
     # Example usage:
     # Define the parameters for the model
-    num_features = dataset.num_colors  # For simplicity, let's start with 1 feature per node
-    hidden_channels = 8
+    num_features = 16
+    hidden_channels = 64
 
     num_classes = dataset.num_colors  # Number of colors
 
     # Create an instance of the GNN model
-    model = GNNGraphColoring(num_features, hidden_channels, num_classes)
+    model = GNNGraphColoring(num_features, hidden_channels, num_classes, 3)
     show_results(dataset, model)

@@ -24,19 +24,30 @@ def generate_random_graph(nodes, edges):
     return G, node_colors
 
 
-def create_pyg_example(graph, node_colors, num_colors):
+def create_pyg_example(graph, node_colors, num_colors, features_len=16):
     edge_list = list(graph.edges())
     edge_index_ab = torch.tensor(edge_list, dtype=torch.long).t().contiguous()
     edge_index_ba = torch.stack([edge_index_ab[1], edge_index_ab[0]], dim=0)
     edge_index = torch.concat([edge_index_ab, edge_index_ba], dim=-1)
+
+    node_degree = dict(graph.degree)
+    edge_weight_ab = torch.tensor([node_degree[ab] <= node_degree[ba] for ab, ba in edge_list], dtype=torch.float)
+    edge_weight_ba = 1 - edge_weight_ab
+    edge_weight = torch.cat([edge_weight_ab, edge_weight_ba], dim=-1)
+
     # Convert node colors to tensor
-    node_features = torch.tensor(node_colors, dtype=torch.long)
-    colors = node_features.clone().detach()
+    node_features = torch.normal(0., 1., size=(len(node_colors), features_len))
+    colors = torch.tensor(node_colors, dtype=torch.long).clone().detach()
     colors[:] = torch.max(colors)
 
     # Create a PyTorch Geometric data object
-    data = Data(x=torch.nn.functional.one_hot(node_features, num_colors), edge_index=edge_index,
-                max_colours=colors)
+    data = Data(
+        x=node_features,
+        y=torch.nn.functional.one_hot(colors, num_colors),
+        edge_index=edge_index,
+        edge_weight=edge_weight,
+        max_colours=colors
+    )
 
     return data
 
