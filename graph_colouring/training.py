@@ -12,7 +12,7 @@ from sklearn.model_selection import train_test_split
 def loss_function(probabilities, edge_index, max_colors):
     used_more_colors_penalty = 0 # torch.sum(probabilities[..., max_colors:])
 
-    right_coloring = torch.sum(probabilities[edge_index[0]] * probabilities[edge_index[1]])
+    right_coloring = torch.mean(torch.sum(probabilities[edge_index[0]] * probabilities[edge_index[1]], axis=1))
     total_loss = right_coloring + used_more_colors_penalty
 
     return total_loss
@@ -69,12 +69,12 @@ def train_model():
     # Create an instance of the GNN model
     model = GNNGraphColoring(num_features, hidden_channels, num_classes, num_layers)
 
-    optimizer = torch.optim.Adam(model.parameters(), lr=1e-3)
+    optimizer = torch.optim.Adam(model.parameters(), lr=3e-4)
     device = "cpu"
     model = model.to(device)
 
     # Training and evaluation iterations
-    num_epochs = 10000
+    num_epochs = 2000
     train_losses = []
     test_accuracies = []
 

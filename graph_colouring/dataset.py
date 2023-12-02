@@ -109,7 +109,7 @@ def generating_graph_example():
 
 if __name__ == '__main__':
     generating_graph_example()
-    create_graph_dataset("basic_dataset", 5000, 20, 30, 10, 35)
+    create_graph_dataset("basic_dataset", 10000, 50, 80, 80, 150)
     dataset = GraphColouringDataset("basic_dataset")
     print(len(dataset))
     print(dataset.num_colors)

@@ -20,23 +20,26 @@ class GNNGraphColoring(nn.Module):
 
 
 def show_results(dataset, model):
-    pyg_graph = dataset.get(10)
-    results = model(pyg_graph)
-    print(results.shape)
-    print(results)
-    G = nx.Graph()
+    for i in range(20):
+        pyg_graph = dataset.get(i)
+        results = model(pyg_graph)
+        print(results.shape)
+        print(results)
+        G = nx.Graph()
 
-    G.add_nodes_from(list(range(pyg_graph.x.shape[0])))
-    G.add_edges_from(pyg_graph.edge_index.cpu().numpy().T)
-    true_colors = np.argmax(pyg_graph.x.cpu().numpy(), axis=-1)
-    plt.title("Proper graph")
-    nx.draw(G, node_color=true_colors)
-    plt.show()
+        G.add_nodes_from(list(range(pyg_graph.x.shape[0])))
+        G.add_edges_from(pyg_graph.edge_index.cpu().numpy().T)
+        true_colors = np.argmax(pyg_graph.x.cpu().numpy(), axis=-1)
+        plt.title("Proper graph")
+        nx.draw(G, node_color=true_colors, node_size=50)
+        plt.savefig(f"proper_graph_{i}.png")
+        plt.clf()
 
-    network_colors = np.argmax(results.cpu().detach().numpy(), axis=-1)
-    plt.title("Network coloring")
-    nx.draw(G, node_color=network_colors)
-    plt.show()
+        network_colors = np.argmax(results.cpu().detach().numpy(), axis=-1)
+        plt.title("Network coloring")
+        nx.draw(G, node_color=network_colors, node_size=50)
+        plt.savefig(f"network_graph_{i}.png")
+        plt.clf()
 
 
 if __name__ == '__main__':
