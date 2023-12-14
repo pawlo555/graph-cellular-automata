@@ -15,7 +15,7 @@ def generate_graphs(n, nodes, edges, seed):
 
 if __name__ == '__main__':
     args = ArgumentParser()
-    args.add_argument('--n', type=int, default=10, help='Number of graphs to generate')
+    args.add_argument('--n', type=int, default=30, help='Number of graphs to generate')
     args.add_argument('--nodes', type=int, default=30, help='Number of nodes')
     args.add_argument('--edges', type=int, default=80, help='Number of edges')
     args.add_argument('--seed', type=int, default=42, help='Random seed for graph generation')
@@ -40,4 +40,4 @@ if __name__ == '__main__':
         errors.append(d_loss_history[-1] / args.edges)
         mistakes.append(d_loss_history[-1])
 
-    print(f'nodes = {args.nodes}, edges = {args.edges}, error = {sum(errors) / len(errors)}, mistakes = {sum(mistakes) / (args.n * args.edges)}')
+    print(f'nodes = {args.nodes}, edges = {args.edges}, error = {sum(errors) / len(errors)}, mistakes = {sum(mistakes)}')
