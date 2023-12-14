@@ -13,7 +13,7 @@ def continuous_loss(embeddings, graph):
     return sum(torch.dot(embeddings[i], embeddings[j]) for i, j in graph.edges)
 
 
-def graph_coloring(graph, k, max_iter, lr):
+def graph_coloring(graph, k, max_iter, lr, verbose):
     embeddings = torch.rand((len(graph), k), requires_grad=True)
     optimizer = torch.optim.SGD([embeddings], lr=lr)
     softmax = torch.nn.Softmax(dim=1)
@@ -36,7 +36,7 @@ def graph_coloring(graph, k, max_iter, lr):
         discrete_loss_history.append(d_loss)
         continuous_loss_history.append(c_loss)
 
-        if step % 100 == 0:
+        if step % 100 == 0 and verbose:
             print(f"Step {step} - discrete loss: {d_loss}, continuous loss: {c_loss}")
 
         if d_loss == 0 or step >= max_iter:
@@ -47,12 +47,12 @@ def graph_coloring(graph, k, max_iter, lr):
     return embeddings.argmax(dim=1).numpy(), discrete_loss_history, continuous_loss_history
 
 
-def train_with_restarts(graph, k, max_iter, lr, restarts):
+def train_with_restarts(graph, k, max_iter, lr, restarts, verbose):
     best_colors = None
     best_loss = float('inf')
 
     for _ in range(restarts):
-        network_colors, d_loss_history, c_loss_history = graph_coloring(graph, k, max_iter, lr)
+        network_colors, d_loss_history, c_loss_history = graph_coloring(graph, k, max_iter, lr, verbose)
 
         if d_loss_history[-1] < best_loss:
             best_loss = d_loss_history[-1]
@@ -85,7 +85,8 @@ if __name__ == '__main__':
         k=max(greedy_colors) + 1,
         max_iter=args.max_iter,
         lr=args.lr,
-        restarts=args.restarts
+        restarts=args.restarts,
+        verbose=True
     )
 
     plt.plot(d_loss_history, label='Discrete loss')
