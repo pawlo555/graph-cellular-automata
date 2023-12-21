@@ -30,8 +30,9 @@ def graph_coloring(graph, k, max_iter, lr, verbose):
         c_loss.backward()
         optimizer.step()
 
-        d_loss = discrete_loss(soft_embeddings, graph).detach().numpy()
-        c_loss = c_loss.detach().numpy()
+        with torch.no_grad():
+            d_loss = discrete_loss(soft_embeddings, graph).numpy()
+            c_loss = c_loss.numpy()
 
         discrete_loss_history.append(d_loss)
         continuous_loss_history.append(c_loss)
