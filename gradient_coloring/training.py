@@ -15,7 +15,7 @@ def continuous_loss(embeddings, graph):
 
 def graph_coloring(graph, k, max_iter, lr, verbose):
     embeddings = torch.rand((len(graph), k), requires_grad=True)
-    optimizer = torch.optim.SGD([embeddings], lr=lr)
+    optimizer = torch.optim.AdamW([embeddings], lr=lr)
     softmax = torch.nn.Softmax(dim=1)
 
     discrete_loss_history = []
@@ -71,7 +71,7 @@ if __name__ == '__main__':
     args.add_argument('--seed', type=int, default=42, help='Random seed for graph generation')
     args.add_argument('--restarts', type=int, default=10, help='Number of restarts')
     args.add_argument('--max_iter', type=int, default=1000, help='Maximum number of iterations')
-    args.add_argument('--lr', type=float, default=0.1, help='Learning rate')
+    args.add_argument('--lr', type=float, default=0.3, help='Learning rate')
     args = args.parse_args()
 
     G = nx.gnm_random_graph(args.n, args.m, args.seed)
