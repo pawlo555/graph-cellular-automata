@@ -3,6 +3,7 @@ from argparse import ArgumentParser
 import matplotlib.pyplot as plt
 import networkx as nx
 import torch
+from node2vec import Node2Vec
 
 
 def discrete_loss(embeddings, graph):
@@ -14,7 +15,9 @@ def continuous_loss(embeddings, graph):
 
 
 def graph_coloring(graph, k, max_iter, lr, verbose):
-    embeddings = torch.rand((len(graph), k), requires_grad=True)
+    node2vec = Node2Vec(graph, dimensions=k, walk_length=30, num_walks=10, workers=8)
+    model = node2vec.fit(window=5, batch_words=32)
+    embeddings = torch.tensor([model.wv[node] for node in graph.nodes()], requires_grad=True, dtype=torch.float32)
     optimizer = torch.optim.AdamW([embeddings], lr=lr)
     softmax = torch.nn.Softmax(dim=1)
 
@@ -49,7 +52,7 @@ def graph_coloring(graph, k, max_iter, lr, verbose):
 
 
 def train_with_restarts(graph, k, max_iter, lr, restarts, verbose):
-    best_colors = None
+    best_colors, best_d_loss, best_c_loss = None, None, None
     best_loss = float('inf')
 
     for _ in range(restarts):
@@ -57,12 +60,12 @@ def train_with_restarts(graph, k, max_iter, lr, restarts, verbose):
 
         if d_loss_history[-1] < best_loss:
             best_loss = d_loss_history[-1]
-            best_colors = network_colors
+            best_colors, best_d_loss, best_c_loss = network_colors, d_loss_history, c_loss_history
 
         if d_loss_history[-1] == 0:
             break
 
-    return best_colors, d_loss_history, c_loss_history
+    return best_colors, best_d_loss, best_c_loss
 
 
 if __name__ == '__main__':
