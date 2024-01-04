@@ -49,7 +49,7 @@ def graph_coloring(graph, k, max_iter, lr, verbose):
 
 
 def train_with_restarts(graph, k, max_iter, lr, restarts, verbose):
-    best_colors = None
+    best_colors, best_d_loss, best_c_loss = None, None, None
     best_loss = float('inf')
 
     for _ in range(restarts):
@@ -57,12 +57,12 @@ def train_with_restarts(graph, k, max_iter, lr, restarts, verbose):
 
         if d_loss_history[-1] < best_loss:
             best_loss = d_loss_history[-1]
-            best_colors = network_colors
+            best_colors, best_d_loss, best_c_loss = network_colors, d_loss_history, c_loss_history
 
         if d_loss_history[-1] == 0:
             break
 
-    return best_colors, d_loss_history, c_loss_history
+    return best_colors, best_d_loss, best_c_loss
 
 
 if __name__ == '__main__':
