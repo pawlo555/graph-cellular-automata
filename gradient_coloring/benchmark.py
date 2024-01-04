@@ -3,7 +3,7 @@ from argparse import ArgumentParser
 import networkx as nx
 from tqdm import tqdm
 
-from gradient_coloring.training import train_with_restarts
+from gradient_coloring.training import graph_coloring
 
 
 GRAPHS = {
@@ -48,7 +48,6 @@ def col_to_graph(filename):
 
 def main():
     args = ArgumentParser()
-    args.add_argument('--restarts', type=int, default=5, help='Number of restarts')
     args.add_argument('--max_iter', type=int, default=500, help='Maximum number of iterations')
     args.add_argument('--lr', type=float, default=0.3, help='Learning rate')
     args.add_argument('--output', type=str, default='results.csv', help='Output file')
@@ -59,12 +58,11 @@ def main():
 
     for filename, colors_num in tqdm(GRAPHS.items()):
         graph = col_to_graph(f'../benchmark/{filename}.col')
-        _, d_loss_history, _ = train_with_restarts(
+        _, d_loss_history, _ = graph_coloring(
             graph=graph,
             k=colors_num,
             max_iter=args.max_iter,
             lr=args.lr,
-            restarts=args.restarts,
             verbose=True
         )
 
