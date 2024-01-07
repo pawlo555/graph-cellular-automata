@@ -1,3 +1,4 @@
+import math
 from argparse import ArgumentParser
 
 import matplotlib.pyplot as plt
@@ -24,8 +25,9 @@ def graph_coloring(graph, k, max_iter, lr, verbose):
     discrete_loss_history = []
     continuous_loss_history = []
     step = 0
+    d_loss = math.inf
 
-    while True:
+    while d_loss != 0 and step < max_iter:
         soft_embeddings = softmax(embeddings)
 
         optimizer.zero_grad()
@@ -43,9 +45,6 @@ def graph_coloring(graph, k, max_iter, lr, verbose):
         if step % 100 == 0 and verbose:
             print(f"Step {step} - discrete loss: {d_loss}, continuous loss: {c_loss}")
 
-        if d_loss == 0 or step >= max_iter:
-            break
-
         step += 1
 
     return embeddings.argmax(dim=1).numpy(), discrete_loss_history, continuous_loss_history
@@ -53,8 +52,8 @@ def graph_coloring(graph, k, max_iter, lr, verbose):
 
 if __name__ == '__main__':
     args = ArgumentParser()
-    args.add_argument('--n', type=int, default=30, help='Number of nodes')
-    args.add_argument('--m', type=int, default=80, help='Number of edges')
+    args.add_argument('--n', type=int, default=100, help='Number of nodes')
+    args.add_argument('--m', type=int, default=200, help='Number of edges')
     args.add_argument('--seed', type=int, default=42, help='Random seed for graph generation')
     args.add_argument('--max_iter', type=int, default=1000, help='Maximum number of iterations')
     args.add_argument('--lr', type=float, default=0.3, help='Learning rate')
