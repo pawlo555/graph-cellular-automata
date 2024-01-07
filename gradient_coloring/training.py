@@ -3,6 +3,7 @@ from argparse import ArgumentParser
 import matplotlib.pyplot as plt
 import networkx as nx
 import torch
+from node2vec import Node2Vec
 
 
 def discrete_loss(embeddings, graph):
@@ -14,7 +15,9 @@ def continuous_loss(embeddings, graph):
 
 
 def graph_coloring(graph, k, max_iter, lr, verbose):
-    embeddings = torch.rand((len(graph), k), requires_grad=True)
+    node2vec = Node2Vec(graph, dimensions=k, walk_length=30, num_walks=10, workers=8)
+    model = node2vec.fit(window=5, batch_words=32)
+    embeddings = torch.tensor([model.wv[node] for node in graph.nodes()], requires_grad=True, dtype=torch.float32)
     optimizer = torch.optim.AdamW([embeddings], lr=lr)
     softmax = torch.nn.Softmax(dim=1)
 
