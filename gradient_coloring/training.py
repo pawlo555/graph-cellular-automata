@@ -7,18 +7,23 @@ import numpy as np
 import torch
 
 
-def discrete_loss(embeddings, graph):
-    return sum(embeddings[i].argmax() == embeddings[j].argmax() for i, j in graph.edges)
+def discrete_loss(embeddings, edge_index):
+    return torch.sum(embeddings[edge_index[0]].argmax(dim=1) == embeddings[edge_index[1]].argmax(dim=1))
 
 
-def continuous_loss(embeddings, graph):
-    return sum(torch.dot(embeddings[i], embeddings[j]) for i, j in graph.edges)
+def continuous_loss(embeddings, edge_index):
+    return torch.sum(embeddings[edge_index[0]] * embeddings[edge_index[1]])
+
+
+def prepare_embeddings(graph, k) -> torch.Tensor:
+    laplacian = nx.laplacian_matrix(graph).toarray()
+    _, eigenvectors = np.linalg.eigh(laplacian)
+    return torch.tensor(eigenvectors[:, -k:], dtype=torch.float32, requires_grad=True)
 
 
 def graph_coloring(graph, k, max_iter, lr, verbose):
-    laplacian = nx.laplacian_matrix(graph).toarray()
-    _, eigenvectors = np.linalg.eigh(laplacian)
-    embeddings = torch.tensor(eigenvectors[:, -k:], dtype=torch.float32, requires_grad=True)
+    embeddings = prepare_embeddings(graph, k)
+    edge_index = torch.tensor(list(graph.edges)).t().contiguous()
     optimizer = torch.optim.AdamW([embeddings], lr=lr)
     softmax = torch.nn.Softmax(dim=1)
 
@@ -31,12 +36,12 @@ def graph_coloring(graph, k, max_iter, lr, verbose):
         soft_embeddings = softmax(embeddings)
 
         optimizer.zero_grad()
-        c_loss = continuous_loss(soft_embeddings, graph)
+        c_loss = continuous_loss(soft_embeddings, edge_index)
         c_loss.backward()
         optimizer.step()
 
         with torch.no_grad():
-            d_loss = discrete_loss(soft_embeddings, graph).numpy()
+            d_loss = discrete_loss(soft_embeddings, edge_index).numpy()
             c_loss = c_loss.numpy()
 
         discrete_loss_history.append(d_loss)

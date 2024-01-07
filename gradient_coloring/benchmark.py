@@ -48,8 +48,8 @@ def col_to_graph(filename):
 
 def main():
     args = ArgumentParser()
-    args.add_argument('--max_iter', type=int, default=500, help='Maximum number of iterations')
-    args.add_argument('--lr', type=float, default=0.3, help='Learning rate')
+    args.add_argument('--max_iter', type=int, default=2000, help='Maximum number of iterations')
+    args.add_argument('--lr', type=float, default=0.5, help='Learning rate')
     args.add_argument('--output', type=str, default='results.csv', help='Output file')
     args = args.parse_args()
 
