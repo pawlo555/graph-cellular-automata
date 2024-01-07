@@ -20,7 +20,7 @@ if __name__ == '__main__':
     args.add_argument('--edges', type=int, default=80, help='Number of edges')
     args.add_argument('--seed', type=int, default=42, help='Random seed for graph generation')
     args.add_argument('--max_iter', type=int, default=1000, help='Maximum number of iterations')
-    args.add_argument('--lr', type=float, default=0.2, help='Learning rate')
+    args.add_argument('--lr', type=float, default=0.01, help='Learning rate')
     args = args.parse_args()
 
     errors = []
