@@ -19,8 +19,8 @@ if __name__ == '__main__':
     args.add_argument('--nodes', type=int, default=30, help='Number of nodes')
     args.add_argument('--edges', type=int, default=80, help='Number of edges')
     args.add_argument('--seed', type=int, default=42, help='Random seed for graph generation')
-    args.add_argument('--max_iter', type=int, default=1000, help='Maximum number of iterations')
-    args.add_argument('--lr', type=float, default=0.01, help='Learning rate')
+    args.add_argument('--max_iter', type=int, default=300, help='Maximum number of iterations')
+    args.add_argument('--lr', type=float, default=0.001, help='Learning rate')
     args = args.parse_args()
 
     errors = []
@@ -32,7 +32,9 @@ if __name__ == '__main__':
             k=colors_num,
             max_iter=args.max_iter,
             lr=args.lr,
-            verbose=False
+            verbose=False,
+            use_model=False,
+            fix_errors=True
         )
 
         errors.append(d_loss_history[-1] / args.edges)

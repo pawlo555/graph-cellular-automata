@@ -108,7 +108,7 @@ if __name__ == '__main__':
     args.add_argument('--n', type=int, default=3000, help='Number of nodes')
     args.add_argument('--m', type=int, default=40000, help='Number of edges')
     args.add_argument('--seed', type=int, default=42, help='Random seed for graph generation')
-    args.add_argument('--max_iter', type=int, default=200, help='Maximum number of iterations')
+    args.add_argument('--max_iter', type=int, default=300, help='Maximum number of iterations')
     args.add_argument('--lr', type=float, default=0.001, help='Learning rate')
     args.add_argument('--use-model', action='store_true', default=False, help='Use SGC model')
     args.add_argument('--print-graph', action='store_true', default=False, help='Displaying graphs')

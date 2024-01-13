@@ -15,17 +15,17 @@ GRAPHS = {
     'DSJC250.9': 72,
     'DSJC500.1': 12,
     'DSJC500.5': 48,
-    'DSJC500.9': 126,
+    # 'DSJC500.9': 126,
     'DSJC1000.1': 20,
     'DSJC1000.5': 87,
-    'DSJC1000.9': 223,
+    # 'DSJC1000.9': 223,
     'DSJR500.1': 12,
-    'DSJR500.5': 126,
+    # 'DSJR500.5': 126,
     'anna': 11,
     'david': 11,
-    'homer': 13,
+    # 'homer': 13,
     'huck': 11,
-    'jean': 10,
+    # 'jean': 10,
     'games120': 9
 }
 
@@ -48,8 +48,8 @@ def col_to_graph(filename):
 
 def main():
     args = ArgumentParser()
-    args.add_argument('--max_iter', type=int, default=2000, help='Maximum number of iterations')
-    args.add_argument('--lr', type=float, default=0.5, help='Learning rate')
+    args.add_argument('--max_iter', type=int, default=300, help='Maximum number of iterations')
+    args.add_argument('--lr', type=float, default=0.001, help='Learning rate')
     args.add_argument('--output', type=str, default='results.csv', help='Output file')
     args = args.parse_args()
 
@@ -63,7 +63,9 @@ def main():
             k=colors_num,
             max_iter=args.max_iter,
             lr=args.lr,
-            verbose=True
+            verbose=True,
+            use_model=False,
+            fix_errors=True
         )
 
         with open(args.output, 'a') as file:
