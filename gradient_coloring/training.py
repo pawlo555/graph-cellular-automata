@@ -24,18 +24,31 @@ def prepare_embeddings(graph, k) -> torch.Tensor:
     return torch.tensor(eigenvectors[:, -k:], dtype=torch.float32, requires_grad=True)
 
 
-def graph_coloring(graph, k, max_iter, lr, verbose, use_model: bool = True, fix_errors: int = 300):
+def process_model(embeddings, edge_index, conv):
+    if conv is not None:
+        # during experiments sigmoid here seems to help
+        x = conv(torch.nn.functional.sigmoid(embeddings), edge_index)
+        # here adding x to embeddings not passing x is crucial for results
+        return torch.nn.functional.softmax(embeddings + x, dim=1)
+    else:
+        return torch.nn.functional.softmax(embeddings, dim=1)
+
+
+def graph_coloring(graph, k, max_iter, lr, verbose, use_model: bool = True, fix_errors: bool = True):
     embeddings = prepare_embeddings(graph, k)
     edge_index = torch.tensor(list(graph.edges)).t().contiguous()
 
-    softmax = torch.nn.Softmax(dim=1)
-    conv = SGConv(
-        in_channels=embeddings.shape[-1],
-        out_channels=embeddings.shape[-1],
-        K=1,  # setting bigger didn't drastically change anything
-        cached=True,
-    )
-    params = list(conv.parameters())
+    if use_model:
+        conv = SGConv(
+            in_channels=embeddings.shape[-1],
+            out_channels=embeddings.shape[-1],
+            K=1,  # setting bigger didn't drastically change anything
+            cached=True,
+        )
+        params = list(conv.parameters())
+    else:
+        conv = None
+        params = []
     params.append(embeddings)
 
     optimizer = torch.optim.Rprop(params, lr=lr)
@@ -43,19 +56,11 @@ def graph_coloring(graph, k, max_iter, lr, verbose, use_model: bool = True, fix_
     discrete_loss_history = []
     continuous_loss_history = []
 
-    min_d_loss = math.inf
-    epochs_with_min_d_loss = 0
-
     step = 0
     d_loss = math.inf
 
     while d_loss != 0 and step < max_iter:
-        if use_model:
-            x = conv(torch.nn.functional.sigmoid(embeddings), edge_index)  # during experiments sigmoid here seems to help
-            # here adding x to embeddings not passing x is crucial for results
-            x = softmax(embeddings + x)
-        else:
-            x = softmax(embeddings)
+        x = process_model(embeddings, edge_index, conv)
 
         optimizer.zero_grad()
         c_loss = continuous_loss(x, edge_index)
@@ -73,27 +78,27 @@ def graph_coloring(graph, k, max_iter, lr, verbose, use_model: bool = True, fix_
             print(f"Step {step} - discrete loss: {d_loss}, continuous loss: {c_loss}")
 
         step += 1
+    if fix_errors:
         with torch.no_grad():
-            if epochs_with_min_d_loss > fix_errors:
-                errors = torch.eq(embeddings[edge_index[0]].argmax(dim=1), embeddings[edge_index[1]].argmax(dim=1))
-                errors_indices = np.where(errors)[0]
-                for error_index in errors_indices:
-                    error_node = edge_index[0, error_index]
-                    connecting_nodes = edge_index[1, edge_index[0] == error_node]
-                    values = embeddings[connecting_nodes].argmax(dim=1)
-                    possible_values = set(range(k)) - set(values.clone().detach().numpy())
-                    if possible_values:
-                        new_color = min(possible_values)
-                        new_embedding = torch.nn.functional.one_hot(torch.tensor(new_color), k)
-                        print(f"Found fix for {edge_index[0, error_index]} node: {new_color}")
-                        embeddings[error_node] = new_embedding
-                min_d_loss = d_loss
-                epochs_with_min_d_loss = 0
-        if min_d_loss > d_loss:
-            min_d_loss = d_loss
-            epochs_with_min_d_loss = 0
-        else:
-            epochs_with_min_d_loss += 1
+            x = process_model(embeddings, edge_index, conv)
+            errors = torch.eq(x[edge_index[0]].argmax(dim=1), x[edge_index[1]].argmax(dim=1))
+            errors_indices = np.where(errors)[0]
+            for error_index in errors_indices:
+                error_node = edge_index[0, error_index]
+                connecting_nodes = edge_index[1, edge_index[0] == error_node]
+                values = x[connecting_nodes].argmax(dim=1)
+                possible_values = set(range(k)) - set(values.clone().detach().numpy())
+                if possible_values:
+                    new_color = min(possible_values)
+                    new_embedding = torch.nn.functional.one_hot(torch.tensor(new_color), k)
+                    print(f"Found fix for {edge_index[0, error_index]} node: {new_color}")
+                    x[error_node] = new_embedding
+
+            c_loss = continuous_loss(x, edge_index).numpy()
+            d_loss = discrete_loss(x, edge_index).numpy()
+
+            discrete_loss_history.append(d_loss)
+            continuous_loss_history.append(c_loss)
 
     return x.argmax(dim=1).numpy(), discrete_loss_history, continuous_loss_history
 
@@ -103,12 +108,12 @@ if __name__ == '__main__':
     args.add_argument('--n', type=int, default=3000, help='Number of nodes')
     args.add_argument('--m', type=int, default=40000, help='Number of edges')
     args.add_argument('--seed', type=int, default=42, help='Random seed for graph generation')
-    args.add_argument('--max_iter', type=int, default=2000, help='Maximum number of iterations')
+    args.add_argument('--max_iter', type=int, default=200, help='Maximum number of iterations')
     args.add_argument('--lr', type=float, default=0.001, help='Learning rate')
     args.add_argument('--use-model', action='store_true', default=False, help='Use SGC model')
     args.add_argument('--print-graph', action='store_true', default=False, help='Displaying graphs')
-    args.add_argument('--fix-errors', default=300, type=int, help='After what number of steps should we'
-                                                                  'try fix errors manually')
+    args.add_argument('--fix-errors', action='store_true', default=False, help='Try to manually fix '
+                                                                               'embeddings at the end of training')
     args = args.parse_args()
 
     torch.manual_seed(args.seed)
