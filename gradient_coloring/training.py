@@ -88,7 +88,10 @@ def graph_coloring(graph, k, max_iter, lr, verbose, use_model: bool = True, fix_
             errors_indices = np.where(errors)[0]
             for error_index in errors_indices:
                 error_node = edge_index[0, error_index]
-                connecting_nodes = edge_index[1, edge_index[0] == error_node]
+                connecting_nodes_a = edge_index[1, edge_index[0] == error_node]
+                connecting_nodes_b = edge_index[0, edge_index[1] == error_node]
+                connecting_nodes = torch.cat((connecting_nodes_a, connecting_nodes_b))
+
                 values = x[connecting_nodes].argmax(dim=1)
                 possible_values = set(range(k)) - set(values.clone().detach().numpy())
                 if possible_values:
