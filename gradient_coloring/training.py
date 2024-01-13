@@ -1,5 +1,6 @@
 import math
 import time
+import random
 from argparse import ArgumentParser
 
 from torch_geometric.nn.conv import SGConv
@@ -24,14 +25,14 @@ def prepare_embeddings(graph, k) -> torch.Tensor:
     return torch.tensor(eigenvectors[:, -k:], dtype=torch.float32, requires_grad=True)
 
 
-def process_model(embeddings, edge_index, conv):
+def process_model(embeddings, edge_index, conv, softmax):
     if conv is not None:
         # during experiments sigmoid here seems to help
         x = conv(torch.nn.functional.sigmoid(embeddings), edge_index)
         # here adding x to embeddings not passing x is crucial for results
-        return torch.nn.functional.softmax(embeddings + x, dim=1)
+        return softmax(embeddings + x)
     else:
-        return torch.nn.functional.softmax(embeddings, dim=1)
+        return softmax(embeddings)
 
 
 def graph_coloring(graph, k, max_iter, lr, verbose, use_model: bool = True, fix_errors: bool = True):
@@ -51,6 +52,7 @@ def graph_coloring(graph, k, max_iter, lr, verbose, use_model: bool = True, fix_
         params = []
     params.append(embeddings)
 
+    softmax = torch.nn.Softmax(dim=-1)
     optimizer = torch.optim.Rprop(params, lr=lr)
 
     discrete_loss_history = []
@@ -60,9 +62,8 @@ def graph_coloring(graph, k, max_iter, lr, verbose, use_model: bool = True, fix_
     d_loss = math.inf
 
     while d_loss != 0 and step < max_iter:
-        x = process_model(embeddings, edge_index, conv)
-
         optimizer.zero_grad()
+        x = process_model(embeddings, edge_index, conv, softmax)
         c_loss = continuous_loss(x, edge_index)
         c_loss.backward()
         optimizer.step()
@@ -78,9 +79,11 @@ def graph_coloring(graph, k, max_iter, lr, verbose, use_model: bool = True, fix_
             print(f"Step {step} - discrete loss: {d_loss}, continuous loss: {c_loss}")
 
         step += 1
+
     if fix_errors:
+        print("Fixing")
         with torch.no_grad():
-            x = process_model(embeddings, edge_index, conv)
+            x = process_model(embeddings, edge_index, conv, softmax)
             errors = torch.eq(x[edge_index[0]].argmax(dim=1), x[edge_index[1]].argmax(dim=1))
             errors_indices = np.where(errors)[0]
             for error_index in errors_indices:
@@ -106,7 +109,7 @@ def graph_coloring(graph, k, max_iter, lr, verbose, use_model: bool = True, fix_
 if __name__ == '__main__':
     args = ArgumentParser()
     args.add_argument('--n', type=int, default=3000, help='Number of nodes')
-    args.add_argument('--m', type=int, default=40000, help='Number of edges')
+    args.add_argument('--m', type=int, default=20000, help='Number of edges')
     args.add_argument('--seed', type=int, default=42, help='Random seed for graph generation')
     args.add_argument('--max_iter', type=int, default=300, help='Maximum number of iterations')
     args.add_argument('--lr', type=float, default=0.001, help='Learning rate')
@@ -116,6 +119,7 @@ if __name__ == '__main__':
                                                                                'embeddings at the end of training')
     args = args.parse_args()
 
+    random.seed(246)
     torch.manual_seed(args.seed)
     np.random.seed(args.seed)
 
