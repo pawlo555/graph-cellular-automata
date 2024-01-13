@@ -38,7 +38,7 @@ def graph_coloring(graph, k, max_iter, lr, verbose, use_model: bool = True, fix_
     params = list(conv.parameters())
     params.append(embeddings)
 
-    optimizer = torch.optim.AdamW(params, lr=lr)
+    optimizer = torch.optim.Rprop(params, lr=lr)
 
     discrete_loss_history = []
     continuous_loss_history = []
@@ -104,7 +104,7 @@ if __name__ == '__main__':
     args.add_argument('--m', type=int, default=40000, help='Number of edges')
     args.add_argument('--seed', type=int, default=42, help='Random seed for graph generation')
     args.add_argument('--max_iter', type=int, default=2000, help='Maximum number of iterations')
-    args.add_argument('--lr', type=float, default=0.01, help='Learning rate')
+    args.add_argument('--lr', type=float, default=0.001, help='Learning rate')
     args.add_argument('--use-model', action='store_true', default=False, help='Use SGC model')
     args.add_argument('--print-graph', action='store_true', default=False, help='Displaying graphs')
     args.add_argument('--fix-errors', default=300, type=int, help='After what number of steps should we'
@@ -123,7 +123,7 @@ if __name__ == '__main__':
     start = time.time()
     best_colors, d_loss_history, c_loss_history = graph_coloring(
         graph=G,
-        k=max(greedy_colors) + 1,
+        k=max(greedy_colors)+1,
         max_iter=args.max_iter,
         lr=args.lr,
         verbose=True,
