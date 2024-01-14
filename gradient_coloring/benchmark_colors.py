@@ -10,7 +10,7 @@ if __name__ == '__main__':
     args = ArgumentParser()
     args.add_argument('--max_iter', type=int, default=300, help='Maximum number of iterations')
     args.add_argument('--lr', type=float, default=0.001, help='Learning rate')
-    args.add_argument('--output', type=str, default='../benchmark/colors.csv', help='Output file')
+    args.add_argument('--output', type=str, default='../benchmark/results/colors.csv', help='Output file')
     args = args.parse_args()
 
     with open(args.output, 'w') as file:
