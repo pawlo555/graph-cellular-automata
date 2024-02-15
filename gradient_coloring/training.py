@@ -35,8 +35,31 @@ def process_model(embeddings, edge_index, conv, softmax):
         return softmax(embeddings)
 
 
-def graph_coloring(graph, k, max_iter, lr, verbose, use_model, fix_errors):
-    embeddings = prepare_embeddings(graph, k)
+def iterate_graph_coloring(graph, min_k, max_k, max_iter, lr, verbose, use_model, fix_errors):
+    embeddings = prepare_embeddings(graph, min_k)
+    all_discrete_loss_history = []
+    all_continuous_loss_history = []
+    colors = None
+
+    for k in range(min_k, max_k+1):
+        if verbose:
+            print(f"Coloring for {k} colors")
+        colors, discrete_loss_history, continuous_loss_history = graph_coloring(graph, k, max_iter, lr, verbose,
+                                                                                use_model, fix_errors, embeddings)
+        all_continuous_loss_history += continuous_loss_history
+        all_discrete_loss_history += discrete_loss_history
+        if discrete_loss_history[-1] == 0:
+            return colors, all_discrete_loss_history, all_continuous_loss_history
+        embeddings = torch.nn.functional.one_hot(torch.tensor(colors, dtype=torch.int64), num_classes=k+1).to(torch.float32)
+        embeddings.requires_grad_(True)
+        embeddings.retain_grad()
+
+    return colors, all_discrete_loss_history, all_continuous_loss_history
+
+
+def graph_coloring(graph, k, max_iter, lr, verbose, use_model, fix_errors, embeddings=None):
+    if embeddings is None:
+        embeddings = prepare_embeddings(graph, k)
     edge_index = torch.tensor(list(graph.edges)).t().contiguous()
 
     if use_model:
@@ -115,8 +138,8 @@ def graph_coloring(graph, k, max_iter, lr, verbose, use_model, fix_errors):
 
 if __name__ == '__main__':
     args = ArgumentParser()
-    args.add_argument('--n', type=int, default=3000, help='Number of nodes')
-    args.add_argument('--m', type=int, default=20000, help='Number of edges')
+    args.add_argument('--n', type=int, default=300, help='Number of nodes')
+    args.add_argument('--m', type=int, default=2000, help='Number of edges')
     args.add_argument('--seed', type=int, default=42, help='Random seed for graph generation')
     args.add_argument('--max_iter', type=int, default=300, help='Maximum number of iterations')
     args.add_argument('--lr', type=float, default=0.001, help='Learning rate')
@@ -137,9 +160,10 @@ if __name__ == '__main__':
     greedy_colors = [greedy_colors_dict[key] for key in sorted(greedy_colors_dict.keys())]
     print("Starting")
     start = time.time()
-    best_colors, d_loss_history, c_loss_history = graph_coloring(
+    best_colors, d_loss_history, c_loss_history = iterate_graph_coloring(
         graph=G,
-        k=max(greedy_colors)+1,
+        min_k=2,
+        max_k=max(greedy_colors)+1,
         max_iter=args.max_iter,
         lr=args.lr,
         verbose=True,
@@ -153,7 +177,8 @@ if __name__ == '__main__':
     print(f"Continuous loss: {c_loss_history[-1]}")
     print(f"Total time: {total_time:0.2f} s")
     print(f"Greedy colouring time: {greedy_time:0.2f} s")
-    print(f"Colors used: {max(greedy_colors) + 1}")
+    print(f"Greedy colors used: {max(greedy_colors) + 1}")
+    print(f"Gradient colors: {max(best_colors)+1}")
 
     plt.plot(d_loss_history, label='Discrete loss')
     plt.plot(c_loss_history, label='Continuous loss')

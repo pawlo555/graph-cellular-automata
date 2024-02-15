@@ -6,6 +6,7 @@ from benchmark import GRAPHS
 
 
 FILES = [
+    ('errors_iterative.csv', "Our method"),
     ('errors_random.csv', 'Random'),
     ('errors_node2vec.csv', 'Node2Vec'),
     ('errors_lap_highest.csv', r'Laplacian (top $k$)'),

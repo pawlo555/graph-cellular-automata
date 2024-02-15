@@ -1,14 +1,15 @@
 from argparse import ArgumentParser
 
+import numpy as np
 from tqdm import tqdm
 
 from benchmark import GRAPHS, col_to_graph
-from gradient_coloring.training import graph_coloring
+from gradient_coloring.training import graph_coloring, iterate_graph_coloring
 
 
 if __name__ == '__main__':
     args = ArgumentParser()
-    args.add_argument('--max_iter', type=int, default=300, help='Maximum number of iterations')
+    args.add_argument('--max_iter', type=int, default=600, help='Maximum number of iterations')
     args.add_argument('--lr', type=float, default=0.001, help='Learning rate')
     args.add_argument('--output', type=str, default='../benchmark/results/colors.csv', help='Output file')
     args = args.parse_args()
@@ -22,15 +23,17 @@ if __name__ == '__main__':
 
         while True:
             print(f'Trial for {filename} with {k} colors')
-            _, d_loss_history, _ = graph_coloring(
+            embedding, d_loss_history, _ = iterate_graph_coloring(
                 graph=graph,
-                k=k,
+                min_k=max(k-20, 2),
+                max_k=1000,
                 max_iter=args.max_iter,
                 lr=args.lr,
                 verbose=False,
                 use_model=False,
                 fix_errors=True
             )
+            true_k = np.max(embedding)+1
 
             if d_loss_history[-1] == 0:
                 break
@@ -38,4 +41,4 @@ if __name__ == '__main__':
             k += 1
 
         with open(args.output, 'a') as file:
-            file.write(f'{filename},{len(graph.nodes)},{len(graph.edges)},{colors_num},{k}\n')
+            file.write(f'{filename},{len(graph.nodes)},{len(graph.edges)},{colors_num},{true_k}\n')

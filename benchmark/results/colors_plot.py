@@ -6,7 +6,7 @@ from benchmark import GRAPHS
 
 
 if __name__ == '__main__':
-    rprop_df = pd.read_csv('colors_rprop_fix.csv')
+    rprop_df = pd.read_csv('colors_iterative.csv')
     greedy_df = pd.read_csv('colors_greedy.csv')
 
     graphs = list(GRAPHS.keys())
