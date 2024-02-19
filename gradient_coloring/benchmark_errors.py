@@ -1,5 +1,8 @@
+import random
 from argparse import ArgumentParser
 
+import numpy as np
+import torch
 from tqdm import tqdm
 
 from benchmark import GRAPHS, col_to_graph
@@ -8,13 +11,19 @@ from gradient_coloring.training import graph_coloring, iterate_graph_coloring
 
 if __name__ == '__main__':
     args = ArgumentParser()
-    args.add_argument('--max_iter', type=int, default=300, help='Maximum number of iterations')
-    args.add_argument('--lr', type=float, default=0.001, help='Learning rate')
-    args.add_argument('--output', type=str, default='../benchmark/results/errors_iterative.csv', help='Output file')
+    args.add_argument('--max_iter', type=int, default=800, help='Maximum number of iterations')
+    args.add_argument('--lr', type=float, default=0.12, help='Learning rate')
+    args.add_argument('--output', type=str, default='../benchmark/results/errors.csv', help='Output file')
     args.add_argument('--iterative', action='store_true', default=False, help='Not use iterative method')
     args.add_argument('--iterative-diff', type=int, default=20, help='To specify min_k based on colors_num')
     args.add_argument('--fixing', action='store_true', default=False, help='Wheather to perform fixing at the end')
+    args.add_argument('--seed', type=int, default=42, help='Random seed for graph generation')
     args = args.parse_args()
+
+    random.seed(args.seed)
+    torch.manual_seed(args.seed)
+    np.random.seed(args.seed)
+
 
     with open(args.output, 'w') as file:
         file.write('graph,n_nodes,n_edges,colors_num,d_loss\n')

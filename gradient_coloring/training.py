@@ -45,19 +45,27 @@ def iterate_graph_coloring(graph, min_k, max_k, max_iter, lr, verbose, use_model
         if verbose:
             print(f"Coloring for {k} colors")
         colors, discrete_loss_history, continuous_loss_history = graph_coloring(graph, k, max_iter, lr, verbose,
-                                                                                use_model, fix_errors, embeddings)
+                                                                                use_model, fix_errors, embeddings, True)
         all_continuous_loss_history += continuous_loss_history
         all_discrete_loss_history += discrete_loss_history
         if discrete_loss_history[-1] == 0:
-            return colors, all_discrete_loss_history, all_continuous_loss_history
-        embeddings = torch.nn.functional.one_hot(torch.tensor(colors, dtype=torch.int64), num_classes=k+1).to(torch.float32)
+            print(discrete_loss_history)
+            return colors.detach().argmax(dim=1).numpy(), all_discrete_loss_history, all_continuous_loss_history
+        # Create a tensor of zeros with shape (1, M)
+        zero_line = torch.zeros(embeddings.shape[0], 1)
+
+        # Concatenate the tensor of zeros with the original tensor along the first dimension
+        embeddings = torch.cat((embeddings, zero_line), dim=-1)
+
+        #embeddings += torch.randn_like(embeddings) / 10.
         embeddings.requires_grad_(True)
         embeddings.retain_grad()
+        print(embeddings.shape)
 
-    return colors, all_discrete_loss_history, all_continuous_loss_history
+    return colors.detach().argmax(dim=1).numpy(), all_discrete_loss_history, all_continuous_loss_history
 
 
-def graph_coloring(graph, k, max_iter, lr, verbose, use_model, fix_errors, embeddings=None):
+def graph_coloring(graph, k, max_iter, lr, verbose, use_model, fix_errors, embeddings=None, from_iterative=False):
     if embeddings is None:
         embeddings = prepare_embeddings(graph, k)
     edge_index = torch.tensor(list(graph.edges)).t().contiguous()
@@ -76,7 +84,8 @@ def graph_coloring(graph, k, max_iter, lr, verbose, use_model, fix_errors, embed
     params.append(embeddings)
 
     softmax = torch.nn.Softmax(dim=-1)
-    optimizer = torch.optim.Rprop(params, lr=lr)
+    #torch.optim.RAdam
+    optimizer = torch.optim.LBFGS(params, lr=lr, max_iter=10, history_size=20)
 
     discrete_loss_history = []
     continuous_loss_history = []
@@ -89,7 +98,15 @@ def graph_coloring(graph, k, max_iter, lr, verbose, use_model, fix_errors, embed
         x = process_model(embeddings, edge_index, conv, softmax)
         c_loss = continuous_loss(x, edge_index)
         c_loss.backward()
-        optimizer.step()
+
+        def closure():
+            optimizer.zero_grad()
+            x = process_model(embeddings, edge_index, conv, softmax)
+            c_loss = continuous_loss(x, edge_index)
+            #c_loss.backward()
+            return c_loss
+
+        optimizer.step(closure=closure)
 
         with torch.no_grad():
             d_loss = discrete_loss(x, edge_index).numpy()
@@ -133,23 +150,25 @@ def graph_coloring(graph, k, max_iter, lr, verbose, use_model, fix_errors, embed
             discrete_loss_history.append(d_loss)
             continuous_loss_history.append(c_loss)
 
+    if from_iterative:
+        return x.detach().clone(), discrete_loss_history, continuous_loss_history
     return x.argmax(dim=1).numpy(), discrete_loss_history, continuous_loss_history
 
 
 if __name__ == '__main__':
     args = ArgumentParser()
-    args.add_argument('--n', type=int, default=300, help='Number of nodes')
-    args.add_argument('--m', type=int, default=2000, help='Number of edges')
+    args.add_argument('--n', type=int, default=200, help='Number of nodes')
+    args.add_argument('--m', type=int, default=1000, help='Number of edges')
     args.add_argument('--seed', type=int, default=42, help='Random seed for graph generation')
-    args.add_argument('--max_iter', type=int, default=300, help='Maximum number of iterations')
-    args.add_argument('--lr', type=float, default=0.001, help='Learning rate')
+    args.add_argument('--max_iter', type=int, default=10, help='Maximum number of iterations')
+    args.add_argument('--lr', type=float, default=1.1, help='Learning rate')
     args.add_argument('--use-model', action='store_true', default=False, help='Use SGC model')
     args.add_argument('--print-graph', action='store_true', default=False, help='Displaying graphs')
     args.add_argument('--fix-errors', action='store_true', default=False, help='Try to manually fix '
                                                                                'embeddings at the end of training')
     args = args.parse_args()
 
-    random.seed(246)
+    random.seed(args.seed)
     torch.manual_seed(args.seed)
     np.random.seed(args.seed)
 
@@ -170,6 +189,7 @@ if __name__ == '__main__':
         use_model=args.use_model,
         fix_errors=args.fix_errors
     )
+    print(best_colors)
     total_time = time.time() - start
     print(f"Final result for {args.n} nodes, {args.m} edges:")
     print(f"Epochs: {len(c_loss_history)}")
@@ -178,7 +198,8 @@ if __name__ == '__main__':
     print(f"Total time: {total_time:0.2f} s")
     print(f"Greedy colouring time: {greedy_time:0.2f} s")
     print(f"Greedy colors used: {max(greedy_colors) + 1}")
-    print(f"Gradient colors: {max(best_colors)+1}")
+    print(f"Gradient colors: {np.max(best_colors)+1}")
+    print(f"Gradient error: {d_loss_history[-1]}")
 
     plt.plot(d_loss_history, label='Discrete loss')
     plt.plot(c_loss_history, label='Continuous loss')
